@@ -435,6 +435,8 @@
             let warnings = [];
             let riskScore = 0;
             let privacyScore = 0;
+            let isSocialMediaAgent = false;
+            let socialMediaPlatform = "";
             
             // Update scores initially
             document.getElementById('riskScore').textContent = '0%';
@@ -447,8 +449,34 @@
                 let version = "unknown";
                 let os = navigator.platform || "unknown";
                 
-                // Browser detection
-                if (ua.includes("Chrome") && !ua.includes("Edg")) {
+                // Social Media User Agent Detection
+                if (ua.includes("FBAN") || ua.includes("FBAV")) {
+                    browserName = "Facebook";
+                    isSocialMediaAgent = true;
+                    socialMediaPlatform = "Facebook";
+                    const match = ua.match(/FBAV\/([\d\.]+)/);
+                    version = match ? match[1] : "unknown";
+                } else if (ua.includes("Instagram")) {
+                    browserName = "Instagram";
+                    isSocialMediaAgent = true;
+                    socialMediaPlatform = "Instagram";
+                    const match = ua.match(/Instagram[/\s]([\d\.]+)/);
+                    version = match ? match[1] : "unknown";
+                } else if (ua.includes("Twitter")) {
+                    browserName = "Twitter";
+                    isSocialMediaAgent = true;
+                    socialMediaPlatform = "Twitter";
+                    const match = ua.match(/Twitter[/\s]([\d\.]+)/);
+                    version = match ? match[1] : "unknown";
+                } else if (ua.includes("Snapchat")) {
+                    browserName = "Snapchat";
+                    isSocialMediaAgent = true;
+                    socialMediaPlatform = "Snapchat";
+                    const match = ua.match(/Snapchat[/\s]([\d\.]+)/);
+                    version = match ? match[1] : "unknown";
+                }
+                // Standard browser detection
+                else if (ua.includes("Chrome") && !ua.includes("Edg")) {
                     browserName = "Chrome";
                     const match = ua.match(/Chrome\/([\d\.]+)/);
                     version = match ? match[1] : "unknown";
@@ -467,7 +495,8 @@
                 }
                 
                 document.getElementById("uaBox").classList.remove('loading');
-                document.getElementById("uaBox").innerHTML = `
+                
+                let browserContent = `
                     <div class="card-header">
                         <div class="card-icon">
                             <i class="fas fa-desktop"></i>
@@ -477,21 +506,29 @@
                     <div class="card-content">
                         ${browserName} <b>${version}</b><br>
                         on ${os}
-                    </div>
                 `;
                 
                 // Check for common automation tools
                 if (navigator.webdriver || ua.includes("Headless") || ua.includes("PhantomJS")) {
                     warnings.push("Automation tools detected");
                     riskScore += 30;
+                    browserContent += `<br><span class="bad"><i class="fas fa-exclamation-triangle"></i> Automation detected</span>`;
                     document.getElementById("uaBox").classList.add('bad');
-                    document.getElementById("uaBox").querySelector('.card-content').innerHTML += 
-                        `<br><span class="bad"><i class="fas fa-exclamation-triangle"></i> Automation detected</span>`;
+                } 
+                // Check for social media user agents
+                else if (isSocialMediaAgent) {
+                    errors.push("Social Media User Agent");
+                    riskScore += 40;
+                    browserContent += `<br><span class="bad"><i class="fas fa-exclamation-triangle"></i> Automated framework detected</span>`;
+                    document.getElementById("uaBox").classList.add('bad');
                 } else {
+                    browserContent += `<br><span class="ok"><i class="fas fa-check-circle"></i> Genuine browser</span>`;
                     document.getElementById("uaBox").classList.add('ok');
-                    document.getElementById("uaBox").querySelector('.card-content').innerHTML += 
-                        `<br><span class="ok"><i class="fas fa-check-circle"></i> Genuine browser</span>`;
                 }
+                
+                browserContent += `</div>`;
+                document.getElementById("uaBox").innerHTML = browserContent;
+                
             } catch (e) {
                 document.getElementById("uaBox").classList.remove('loading');
                 document.getElementById("uaBox").classList.add('bad');
@@ -802,7 +839,14 @@
             
             // Final Verdict
             const final = document.getElementById("final");
-            if (errors.length === 0 && warnings.length === 0) {
+            
+            // If social media user agent is detected, mark as inconsistent
+            if (isSocialMediaAgent) {
+                final.className = "red";
+                final.innerHTML = "<i class='fas fa-shield-alt'></i> Inconsistent Browser Fingerprint<br>" + 
+                                `<div class='details'>Social Media User Agent Detected: ${socialMediaPlatform}</div>`;
+            } 
+            else if (errors.length === 0 && warnings.length === 0) {
                 final.className = "green";
                 final.innerHTML = "<i class='fas fa-shield-check'></i> Highly Consistent Browser Fingerprint<br>" + 
                                 "<div class='details'>No signs of privacy protection or impersonation detected</div>";
